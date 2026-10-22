@@ -1,0 +1,57 @@
+TokenCalibrationDemo: token counts without a tokenizer, calibrated from the bills
+model support-model; 90% intervals; drift test over the last 20 bills at p < 0.001
+
+== 1. Learning from bills (simulated upstream tokenizer, version 1)
+bill 1 (english): billed 282, chars/4 262, calibrator 258 [154-465] prior band, 19 more bills to calibrate
+bill 19 (english): billed 256, chars/4 276, calibrator 256 [153-461] prior band, 1 more bill to calibrate
+bill 20 (english): billed 306, chars/4 209, calibrator 301 [294-344] calibrated on 19 bills at 90%
+bill 60 (english): billed 130, chars/4 136, calibrator 129 [126-134] calibrated on 59 bills at 90%
+first Japanese bills, each estimated before it was learned from:
+  bill 68: billed 520, chars/4 175 (-66.3%), calibrator 540 (+3.8%), interval 530-579 outside
+  bill 77: billed 278, chars/4 121 (-56.5%), calibrator 277 (-0.4%), interval 270-297 inside
+  bill 81: billed 279, chars/4 75 (-73.1%), calibrator 284 (+1.8%), interval 278-295 inside
+  bill 93: billed 145, chars/4 47 (-67.6%), calibrator 149 (+2.8%), interval 146-155 outside
+  bill 98: billed 420, chars/4 107 (-74.5%), calibrator 424 (+1.0%), interval 414-439 inside
+  bill 100: billed 274, chars/4 74 (-73.0%), calibrator 274 (+0.0%), interval 267-282 inside
+bills 61-160, every estimate made before its bill arrived:
+  kind      bills  median |err| chars/4  median |err| calibrated  worst chars/4  inside 90% interval
+  english   33     11.6%                   1.0%                       -41.2%         33/33
+  code      16     31.2%                   0.7%                       -38.2%         16/16
+  japanese  22     71.8%                   1.0%                       -75.5%         18/22
+  emoji     29     40.3%                   1.9%                       -47.9%         22/29
+  all       100    33.0%                   1.0%                       -75.5%         89/100
+
+== 2. Will it fit? 8,192-token window, 1,024 reserved for the answer (7,168 for the prompt)
+english request: chars/4 7579 says too long; calibrator 6220-6592 says fits, 576 tokens to spare (trim 0); provider bills 6416: fits
+english request: chars/4 8895 says too long; calibrator 7301-7737 says overflows by 133 to 569 tokens (trim 569); provider bills 7518: rejected (context length exceeded)
+code request: chars/4 5357 says fits; calibrator 6931-7345 says may overflow by up to 177 tokens (trim 177); provider bills 7133: fits
+japanese request: chars/4 1719 says fits; calibrator 7395-7837 says overflows by 227 to 669 tokens (trim 669); provider bills 7530: rejected (context length exceeded)
+
+== 3. Budget holds over bills 61-160 (hold first, settle on the bill)
+billed 33591 prompt tokens across 100 requests
+holding chars/4: 20646 held, short on 90 requests by 13060 tokens in all
+holding the calibrated upper bound: 35092 held (+4.5% over the bill), short on 4 requests by 10 tokens in all
+
+== 4. Tokenizer upgrade at bill 161 (simulated version 2: longer words merge, cheaper framing)
+bill 165: drift alarm, 8 of the last 20 bills outside the reference interval, p = 4.16e-04; calibration restarted
+before the alarm: median error +10.2% over 5 bills
+last 40 bills: median |err| 0.8%, 39/40 inside the 90% interval
+report: 76 bills since the reset, 240 in all, 1 reset
+
+== 5. What it learned before the upgrade (rates in tokens per unit; prior in brackets)
+  ascii letter       0.226 [0.220]
+  digit              0.826 [0.500]
+  whitespace         0.084 [0.050]
+  ascii punctuation  0.887 [0.700]
+  cjk                1.118 [1.200]
+  other letter       0.500 [0.500]
+  emoji              2.579 [2.000]
+  other              1.000 [1.000]
+  per message        4.732 [4.000]
+  per tool           14.919 [8.000]
+  per request        4.149 [3.000]
+  (one rate per class is a least-squares fit, so a class that always travels with another,
+   such as whitespace with letters, can trade weight with it; the predictions are what is checked)
+
+== 6. Snapshot and restore
+snapshot: 3475 bytes of JSON; probe estimate live 33 [30-36], restored 33 [30-36], identical: true
