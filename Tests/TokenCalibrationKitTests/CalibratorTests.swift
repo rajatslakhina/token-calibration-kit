@@ -14,6 +14,8 @@ final class CalibratorTests: XCTestCase {
         XCTAssertEqual(estimate.upper, Int((raw * 1.8).rounded(.up)))
         XCTAssertEqual(estimate.basis, .priorBand(billsNeeded: 19))
         XCTAssertEqual(estimate.model, model)
+        // Nothing has been billed yet, so all of it is unfamiliar.
+        XCTAssertEqual(estimate.unfamiliarTokens, estimate.point)
         let viaPrompt = try await calibrator.estimatePrompt(messages: ["Hello there, how are you?"], model: model)
         XCTAssertEqual(viaPrompt, estimate)
         let nothing = try await calibrator.estimate(.empty, model: model)
@@ -79,6 +81,31 @@ final class CalibratorTests: XCTestCase {
         }
         let report = try await calibrator.report(for: model)
         XCTAssertEqual(report.rates.rate(for: .cjk), Fixture.truth.rate(for: .cjk), accuracy: 0.15)
+    }
+
+    func testClassesNoBillContainedUseThePriorBand() async throws {
+        let calibrator = TokenCalibrator()
+        var rng = LCG(seed: 9)
+        for _ in 0..<40 {
+            let features = Fixture.englishPrompt(&rng)
+            _ = try await calibrator.record(features, billedTokens: Fixture.bill(features, rng: &rng), model: model)
+        }
+        let plain = try await calibrator.estimate(.prompt(messages: ["the budget for the token window"]), model: model)
+        let withDigits = TextFeatures.prompt(messages: ["the budget for the token window 1234567890"])
+        let mixed = try await calibrator.estimate(withDigits, model: model)
+        XCTAssertEqual(plain.unfamiliarTokens, 0)
+        // Ten digits at the prior's 0.5 a digit, never billed, so bounded by 0.6x to 1.8x of 5.
+        XCTAssertEqual(mixed.unfamiliarTokens, 5)
+        XCTAssertEqual(mixed.basis, .calibrated(bills: 40, coverage: 0.9))
+        XCTAssertGreaterThanOrEqual(mixed.upper - plain.upper, 8)
+        XCTAssertLessThanOrEqual(mixed.lower - plain.lower, 5)
+        XCTAssertLessThanOrEqual(mixed.lower, mixed.point)
+        XCTAssertLessThanOrEqual(mixed.point, mixed.upper)
+
+        let billedWithDigits = TextFeatures.prompt(messages: ["order 4521 shipped in 3 boxes"])
+        _ = try await calibrator.record(billedWithDigits, billedTokens: 20, model: model)
+        let familiar = try await calibrator.estimate(withDigits, model: model)
+        XCTAssertEqual(familiar.unfamiliarTokens, 0)
     }
 
     func testWindowKeepsTheMostRecentErrors() async throws {

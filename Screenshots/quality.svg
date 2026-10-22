@@ -1,20 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="240" viewBox="0 0 1000 240">
 <rect width="1000" height="240" rx="10" fill="#0d1117"/>
-<text x="500" y="32" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#e6edf3">TokenCalibrationKit&#160;&#8212;&#160;quality&#160;gates,&#160;tool-verified</text>
+<text x="500" y="32" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#e6edf3">TokenCalibrationKit&#160;1.1.0&#160;&#8212;&#160;quality&#160;gates,&#160;tool-verified</text>
 <g font-family="Helvetica,Arial,sans-serif" font-size="13">
 <rect x="20" y="60" width="960" height="28" rx="6" fill="#161b22" stroke="#30363d"/>
 <text x="34" y="79" fill="#79c0ff" font-family="Menlo,Consolas,monospace" font-size="12">swift&#160;build</text>
 <text x="330" y="79" fill="#7ee787">&#10003;&#160;0&#160;warnings,&#160;0&#160;errors&#160;&#160;(Swift&#160;6.2.4,&#160;Swift&#160;6&#160;language&#160;mode)</text>
 <rect x="20" y="94" width="960" height="28" rx="6" fill="#161b22" stroke="#30363d"/>
 <text x="34" y="113" fill="#79c0ff" font-family="Menlo,Consolas,monospace" font-size="12">swift&#160;test&#160;--enable-code-coverage</text>
-<text x="330" y="113" fill="#7ee787">&#10003;&#160;30&#160;tests,&#160;0&#160;failures</text>
+<text x="330" y="113" fill="#7ee787">&#10003;&#160;31&#160;tests,&#160;0&#160;failures</text>
 <rect x="20" y="128" width="960" height="28" rx="6" fill="#161b22" stroke="#30363d"/>
 <text x="34" y="147" fill="#79c0ff" font-family="Menlo,Consolas,monospace" font-size="12">llvm-cov&#160;report</text>
-<text x="330" y="147" fill="#7ee787">&#10003;&#160;100.00%&#160;regions&#160;(218),&#160;functions&#160;(70),&#160;lines&#160;(502)&#160;on&#160;all&#160;9&#160;library&#160;files&#160;with&#160;code</text>
+<text x="330" y="147" fill="#7ee787">&#10003;&#160;100.00%&#160;regions&#160;(224),&#160;functions&#160;(74),&#160;lines&#160;(530)&#160;on&#160;all&#160;9&#160;library&#160;files&#160;with&#160;code</text>
 <rect x="20" y="162" width="960" height="28" rx="6" fill="#161b22" stroke="#30363d"/>
 <text x="34" y="181" fill="#79c0ff" font-family="Menlo,Consolas,monospace" font-size="12">swiftlint&#160;lint&#160;--strict</text>
 <text x="330" y="181" fill="#7ee787">&#10003;&#160;0&#160;violations&#160;in&#160;18&#160;files&#160;(SwiftLint&#160;0.63.2),&#160;no&#160;suppressions</text>
 <rect x="20" y="196" width="960" height="28" rx="6" fill="#161b22" stroke="#30363d"/>
 <text x="34" y="215" fill="#79c0ff" font-family="Menlo,Consolas,monospace" font-size="12">swift&#160;run&#160;TokenCalibrationDemo</text>
-<text x="330" y="215" fill="#7ee787">&#10003;&#160;median&#160;error&#160;1.0%&#160;vs&#160;33.0%&#160;for&#160;chars/4;&#160;89/100&#160;inside&#160;the&#160;90%&#160;interval</text>
+<text x="330" y="215" fill="#7ee787">&#10003;&#160;median&#160;error&#160;1.0%&#160;vs&#160;33.0%&#160;for&#160;chars/4;&#160;91/100&#160;inside&#160;the&#160;90%&#160;interval</text>
 </g></svg>

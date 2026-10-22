@@ -10,6 +10,20 @@ public struct TokenEstimate: Hashable, Sendable {
     public let upper: Int
     /// Whether the interval was measured from this model's bills or is still the prior band.
     public let basis: EstimateBasis
+    /// Tokens, at prior rates, of feature classes no bill for this model has contained yet: digits
+    /// before the first bill with a number in it, CJK before the first Japanese message, a tool frame
+    /// before the first request with tools. The calibrated interval says nothing about these, so they
+    /// are bounded by the prior band instead and added to the interval on both sides.
+    public let unfamiliarTokens: Int
+
+    init(model: String, point: Int, lower: Int, upper: Int, basis: EstimateBasis, unfamiliarTokens: Int = 0) {
+        self.model = model
+        self.point = point
+        self.lower = lower
+        self.upper = upper
+        self.basis = basis
+        self.unfamiliarTokens = unfamiliarTokens
+    }
 }
 
 /// Where an interval came from.

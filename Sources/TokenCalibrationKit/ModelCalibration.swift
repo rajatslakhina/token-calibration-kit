@@ -72,25 +72,49 @@ struct ModelCalibration: Sendable {
 
     /// The point is the fitted rates corrected by the median recent error; the interval comes from
     /// the order statistics of the recent errors, or from the prior band until there are enough.
+    ///
+    /// Recent errors only describe text like the text that was billed. The part of the estimate that
+    /// comes from feature classes no bill has contained is bounded by the prior band instead, because
+    /// its rate is still the prior's guess: in 1.0.0 a request full of digits, sent to a model that had
+    /// only been billed for prose, got a tight interval that missed its bill by a third.
     func estimate(_ features: TextFeatures, model: String) -> TokenEstimate {
         let raw = max(0, rates.tokens(for: features))
+        let unfamiliar = unfamiliarTokens(in: features)
         guard let ranks = ConformalRanks.ranks(count: state.residuals.count, coverage: configuration.coverage) else {
             return TokenEstimate(
                 model: model,
                 point: Int(raw.rounded()),
                 lower: Int((raw * configuration.priorBandLower).rounded(.down)),
                 upper: Int((raw * configuration.priorBandUpper).rounded(.up)),
-                basis: .priorBand(billsNeeded: configuration.minimumBills - state.residuals.count)
+                basis: .priorBand(billsNeeded: configuration.minimumBills - state.residuals.count),
+                unfamiliarTokens: Int(unfamiliar.rounded())
             )
         }
         let sorted = state.residuals.sorted()
+        let familiar = max(0, raw - unfamiliar)
+        func bound(_ error: Double, _ band: Double) -> Double {
+            familiar * exp(error) + unfamiliar * band
+        }
         return TokenEstimate(
             model: model,
-            point: Int((raw * exp(sorted[(sorted.count - 1) / 2])).rounded()),
-            lower: Int((raw * exp(sorted[ranks.lower - 1])).rounded(.down)),
-            upper: Int((raw * exp(sorted[ranks.upper - 1])).rounded(.up)),
-            basis: .calibrated(bills: sorted.count, coverage: configuration.coverage)
+            point: Int(bound(sorted[(sorted.count - 1) / 2], 1).rounded()),
+            lower: Int(bound(sorted[ranks.lower - 1], configuration.priorBandLower).rounded(.down)),
+            upper: Int(bound(sorted[ranks.upper - 1], configuration.priorBandUpper).rounded(.up)),
+            basis: .calibrated(bills: sorted.count, coverage: configuration.coverage),
+            unfamiliarTokens: Int(unfamiliar.rounded())
         )
+    }
+
+    /// Tokens at the current rates from features no bill has contained. A feature has been billed
+    /// when its diagonal entry in the normal equations is non-zero.
+    private func unfamiliarTokens(in features: TextFeatures) -> Double {
+        let size = TextFeatures.dimension
+        let vector = features.vector
+        var total = 0.0
+        for index in 0..<size where vector[index] > 0 && state.gram[index * size + index] == 0 {
+            total += rates.weights[index] * vector[index]
+        }
+        return total
     }
 
     /// Scores the bill against the estimate made without it, then learns from it.

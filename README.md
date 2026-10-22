@@ -37,7 +37,8 @@ lesson away.
   measured tokenizer.
 - **`TokenCalibrator`** (an actor) keeps one calibration per model.
   - `estimate(_:model:)` and `estimatePrompt(messages:toolSchemas:model:)` return a **`TokenEstimate`**:
-    a point, a lower and an upper bound, and an **`EstimateBasis`** saying where the interval came from.
+    a point, a lower and an upper bound, an **`EstimateBasis`** saying where the interval came from, and
+    `unfamiliarTokens`, the part of the estimate from feature classes this model has never been billed for.
   - `record(_:billedTokens:model:)` learns from one bill. It first scores the bill against the estimate
     it would have made without it, and returns that as a **`CalibrationUpdate`** (the estimate, whether
     the bill fell inside it, and any drift alarm).
@@ -69,6 +70,15 @@ of those errors, so it is built from out-of-sample errors only. At 90% coverage 
 then the estimate says so (`.priorBand(billsNeeded:)`) and uses the configured band. The point is the fit
 corrected by the median error.
 
+**Text the bills have not covered.** Recent errors only describe text like the text that was billed. If a
+request contains a feature class no bill for that model has contained (digits, before the first bill with
+a number in it), that class's rate is still the prior's guess, and the recent errors say nothing about it.
+So the estimate is split: the familiar part gets the calibrated interval, the unfamiliar part gets the
+prior band (0.6x to 1.8x), and the two are added. `unfamiliarTokens` says how much of the estimate that
+is. Version 1.0.0 did not do this, and the shared demo caught it: a model billed only for English and short
+Japanese questions was sent a timestamp-heavy log, called it 2,697-3,543 tokens (calibrated, "fits, 41
+tokens to spare"), and was billed 3,896.
+
 The coverage claim assumes the errors are exchangeable. They are not quite: the model improves as it
 learns, so early errors are larger than later ones, which makes the interval conservative rather than
 optimistic. `CalibrationReport.empiricalCoverage` reports what actually happened, and the demo prints it.
@@ -91,20 +101,22 @@ Read these as a simulation of the method, not a measurement of any real model.
 |---|---|---|---|---|
 | English | 33 | 11.6% | 1.0% | 33/33 |
 | Code | 16 | 31.2% | 0.7% | 16/16 |
-| Japanese | 22 | 71.8% | 1.0% | 18/22 |
-| Emoji-heavy | 29 | 40.3% | 1.9% | 22/29 |
-| **All** | **100** | **33.0%** | **1.0%** | **89/100** |
+| Japanese | 22 | 71.8% | 1.0% | 19/22 |
+| Emoji-heavy | 29 | 40.3% | 1.9% | 23/29 |
+| **All** | **100** | **33.0%** | **1.0%** | **91/100** |
 
 - **The first Japanese request** (bill 68) was billed 520 tokens. `chars/4` said 175 (-66.3%). The
-  calibrator had never seen CJK text, but its prior has a CJK rate, and it said 540 (+3.8%).
+  calibrator had never been billed for CJK text, but its prior has a CJK rate: it said 539 (+3.7%), with a
+  wide 404-817 interval because the CJK part was unfamiliar. In 1.0.0 the same estimate came with a
+  calibrated 530-579, which missed.
 - **Context window** (8,192 tokens, 1,024 reserved for the answer). `chars/4` called a Japanese request
   1,719 tokens and said it fits; it was billed 7,530 and would have been rejected. The calibrator said it
   overflows by 227 to 669 tokens. Of four requests near the limit, `chars/4` got two wrong. The calibrator
   called two correctly as overflowing and one correctly as fitting; the fourth, which fit with 35 tokens to
   spare, it called "may overflow by up to 177".
 - **Budget holds.** Holding `chars/4` for the 100 mixed requests held 20,646 tokens against 33,591 billed
-  and was short on 90 of them. Holding the calibrated upper bound held 35,092 (+4.5%) and was short on 4,
-  by 10 tokens in all.
+  and was short on 90 of them. Holding the calibrated upper bound held 35,343 (+5.2%) and was short on 3,
+  by 8 tokens in all.
 - **Tokenizer upgrade** at bill 161: the alarm fired at bill 165 (8 of the last 20 outside the reference
   interval, p = 4.16e-04). Over the last 40 bills after it: median error 0.8%, 39/40 inside.
 - **Snapshot**: 3,475 bytes of JSON; the restored calibrator's estimate is identical.
@@ -177,10 +189,16 @@ The full output is in [`Screenshots/demo-output.txt`](Screenshots/demo-output.tx
 ![Quality gates](Screenshots/quality.svg)
 
 - `swift build`: 0 warnings, 0 errors (Swift 6.2.4, Swift 6 language mode).
-- `swift test --enable-code-coverage`: 30 tests, 0 failures.
-- `llvm-cov report`: 100.00% regions (218), functions (70) and lines (502) on all 9 library files that
+- `swift test --enable-code-coverage`: 31 tests, 0 failures.
+- `llvm-cov report`: 100.00% regions (224), functions (74) and lines (530) on all 9 library files that
   contain executable code (`CalibrationError.swift` only declares an enum).
 - `swiftlint lint --strict` (SwiftLint 0.63.2): 0 violations, 18 files, no suppressions.
+
+## Versions
+
+- **1.1.0**: the part of an estimate from feature classes a model has never been billed for is bounded by
+  the prior band, not the calibrated interval, and reported as `TokenEstimate.unfamiliarTokens`.
+- **1.0.0**: first release.
 
 ## Part of a series
 
